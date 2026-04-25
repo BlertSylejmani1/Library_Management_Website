@@ -153,3 +153,45 @@ require_once __DIR__ . '/../includes/navbar.php';
                 <?php endif; ?>
             </div>
         </div>
+
+        <div class="profile-form-area">
+            <form method="post" action="<?= BASE_URL ?>/pages/profile.php" data-profile-form>
+                <div class="profile-section">
+                    <h3>Personal Information</h3>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Full Name</label>
+                            <input name="name" value="<?= htmlspecialchars($profile['name']) ?>" data-profile-field="name" required />
+                        </div>
+                        <div class="form-field">
+                            <label>Email Address</label>
+                            <input type="email" name="email" value="<?= htmlspecialchars($profile['email']) ?>" required />
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Phone Number</label>
+                            <input name="phone" value="<?= htmlspecialchars($profile['phone']) ?>" data-profile-field="phone" required />
+                        </div>
+                        <div class="form-field">
+                            <label>Location</label>
+                            <input name="location" value="<?= htmlspecialchars($profile['location']) ?>" data-profile-field="location" />
+                        </div>
+                    </div>
+                    <?php if ($isStudent): ?>
+                        <div class="form-row">
+                            <div class="form-field">
+                                <label>Student ID</label>
+                                <input name="studentId" value="<?= htmlspecialchars($profile['studentId']) ?>" data-profile-field="studentId" />
+                            </div>
+                            <div class="form-field">
+                                <label>Faculty</label>
+                                <input name="faculty" value="<?= htmlspecialchars($profile['faculty']) ?>" />
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    <div class="form-field">
+                        <label>Bio</label>
+                        <textarea name="bio" rows="3" data-profile-field="bio"><?= htmlspecialchars($profile['bio']) ?></textarea>
+                    </div>
+                </div>
