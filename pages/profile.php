@@ -195,3 +195,49 @@ require_once __DIR__ . '/../includes/navbar.php';
                         <textarea name="bio" rows="3" data-profile-field="bio"><?= htmlspecialchars($profile['bio']) ?></textarea>
                     </div>
                 </div>
+
+                <div class="profile-section">
+                    <h3>Security</h3>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label>Current Password</label>
+                            <input type="password" placeholder="••••••••" />
+                        </div>
+                        <div class="form-field">
+                            <label>New Password</label>
+                            <input type="password" placeholder="••••••••" />
+                        </div>
+                    </div>
+                    <div class="form-field" style="max-width: calc(50% - 0.4375rem);">
+                        <label>Confirm New Password</label>
+                        <input type="password" placeholder="••••••••" />
+                    </div>
+                </div>
+
+                <div class="profile-section">
+                    <h3>Preferences</h3>
+                    <div class="prefs-list">
+                        <?php foreach ($preferences as $index => $preference): ?>
+                            <div class="pref-item">
+                                <div>
+                                    <p><?= htmlspecialchars($preference['label']) ?></p>
+                                    <span><?= htmlspecialchars($preference['desc']) ?></span>
+                                </div>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" <?= $preference['checked'] ? 'checked' : '' ?> />
+                                    <span class="toggle-track"></span>
+                                </label>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="profile-actions">
+                    <button class="btn-secondary" type="reset">Discard Changes</button>
+                    <button class="btn-primary" type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
