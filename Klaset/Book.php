@@ -106,3 +106,83 @@ class Book {
     public function isAvailable(): bool {
         return $this->available > 0;
     }
+        // ── Shndërro në array ────────────────────────────────────
+    public function toArray(): array {
+        return [
+            'id'        => $this->id,
+            'title'     => $this->title,
+            'author'    => $this->author,
+            'genre'     => $this->genre,
+            'isbn'      => $this->isbn,
+            'year'      => $this->year,
+            'copies'    => $this->copies,
+            'available' => $this->available,
+            'status'    => $this->status,
+        ];
+    }
+
+    // ── Paraqitje si tekst ──────────────────────────────────
+    public function __toString(): string {
+        return "[Book #{$this->id}] \"{$this->title}\" by {$this->author} — {$this->available}/{$this->copies} available";
+    }
+
+    // ── Krijo objekt nga array ──────────────────────────────
+    public static function fromArray(array $data): self {
+        return new self(
+            $data['id'],
+            $data['title'],
+            $data['author'],
+            $data['genre']     ?? '',
+            $data['isbn']      ?? '',
+            $data['year']      ?? 0,
+            $data['copies']    ?? 1,
+            $data['available'] ?? 1,
+            $data['status']    ?? 'available'
+        );
+    }
+
+    // ── Ndihmës: normalizo hyrjen ───────────────────────────
+    private static function normalize(mixed $entry): array {
+        if ($entry instanceof self) {
+            return $entry->toArray();
+        }
+        return (array) $entry;
+    }
+
+    // ── Statike: merr të gjithë librat ───────────────────────
+    public static function getAll(): array {
+        $books = [];
+        foreach ($GLOBALS['books'] as $bookData) {
+            $books[] = self::fromArray(self::normalize($bookData));
+        }
+        return $books;
+    }
+
+    // ── Statike: gjej librin sipas ID ───────────────────────
+    public static function findById(int $id): ?self {
+        foreach ($GLOBALS['books'] as $bookData) {
+            $data = self::normalize($bookData);
+            if ((int)$data['id'] === $id) {
+                return self::fromArray($data);
+            }
+        }
+        return null;
+    }
+
+    // ── Statike: kërko libra ────────────────────────────────
+    public static function search(string $query): array {
+        $results = [];
+        $query   = strtolower(trim($query));
+        foreach ($GLOBALS['books'] as $bookData) {
+            $data = self::normalize($bookData);
+            if (
+                str_contains(strtolower($data['title']),  $query) ||
+                str_contains(strtolower($data['author']), $query) ||
+                str_contains(strtolower($data['genre']),  $query)
+            ) {
+                $results[] = self::fromArray($data);
+            }
+        }
+        return $results;
+    }
+}
