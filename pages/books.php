@@ -57,3 +57,59 @@ require_once __DIR__ . '/../includes/navbar.php';
             </button>
         </div>
     </div>
+    
+    <div class="result-count"><span data-books-count><?= count($books) ?></span> books found</div>
+
+    <div class="table-card" data-view-panel="table">
+        <table class="books-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Genre</th>
+                    <th>ISBN</th>
+                    <th>Year</th>
+                    <th>Copies</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody data-filter-scope-id="books-items">
+                <?php foreach ($books as $book): ?>
+                    <tr
+                        data-filter-item
+                        data-title="<?= htmlspecialchars(strtolower($book['title'])) ?>"
+                        data-author="<?= htmlspecialchars(strtolower($book['author'])) ?>"
+                        data-isbn="<?= htmlspecialchars(strtolower($book['isbn'])) ?>"
+                        data-genre="<?= htmlspecialchars($book['genre']) ?>"
+                        data-book='<?= htmlspecialchars(json_encode($book, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES) ?>'
+                    >
+                        <td><span class="book-title-cell"><?= htmlspecialchars($book['title']) ?></span></td>
+                        <td><?= htmlspecialchars($book['author']) ?></td>
+                        <td><span class="genre-tag"><?= htmlspecialchars($book['genre']) ?></span></td>
+                        <td><code class="isbn-code"><?= htmlspecialchars($book['isbn']) ?></code></td>
+                        <td><?= htmlspecialchars((string) $book['year']) ?></td>
+                        <td>
+                            <span class="copies-cell">
+                                <span class="copies-avail"><?= (int) $book['available'] ?></span>
+                                <span class="copies-sep">/</span>
+                                <span class="copies-total"><?= (int) $book['copies'] ?></span>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-pill status-<?= (int) $book['available'] > 0 ? 'available' : 'loaned' ?>">
+                                <?= (int) $book['available'] > 0 ? 'Available' : 'All Loaned' ?>
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-btns">
+                                <button class="act-btn act-edit" type="button" data-edit-book>Edit</button>
+                                <button class="act-btn act-delete" type="button" data-delete-book data-book-title="<?= htmlspecialchars($book['title']) ?>">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+                <tr class="modal-hidden" data-filter-empty-row><td colspan="8" class="empty-row">No books match your search.</td></tr>
+            </tbody>
+        </table>
+    </div>
