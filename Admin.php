@@ -85,3 +85,91 @@ class Admin extends User {
         }
         return false;
     }
+        // ── Process a new loan ───────────────────────────────────
+    public function processLoan(int $userId, int $bookId): array {
+        for ($i = 0; $i < count($GLOBALS['books']); $i++) {
+            $entry = $GLOBALS['books'][$i];
+            $id    = is_array($entry) ? (int)$entry['id'] : $entry->getId();
+
+            if ($id === $bookId) {
+                $avail = is_array($entry) ? (int)$entry['available'] : $entry->getAvailable();
+                if ($avail <= 0) {
+                    return ['success' => false, 'message' => 'No copies available for this book.'];
+                }
+
+                $GLOBALS['books'][$i]['available']--;
+                $GLOBALS['books'][$i]['status'] = $GLOBALS['books'][$i]['available'] > 0 ? 'available' : 'loaned';
+
+                $maxLoanNum = 841;
+                foreach ($GLOBALS['loans'] as $loan) {
+                    $num = (int) str_replace('L-', '', $loan['id']);
+                    if ($num > $maxLoanNum) $maxLoanNum = $num;
+                }
+                $loanId = 'L-' . str_pad($maxLoanNum + 1, 4, '0', STR_PAD_LEFT);
+
+                $memberName = 'Unknown';
+                foreach ($GLOBALS['users'] as $u) {
+                    if ((int)$u['id'] === $userId) { $memberName = $u['name']; break; }
+                }
+
+                $newLoan = [
+                    'id'      => $loanId,
+                    'user_id' => $userId,
+                    'book_id' => $bookId,
+                    'book'    => $GLOBALS['books'][$i]['title'],
+                    'member'  => $memberName,
+                    'issued'  => date('Y-m-d'),
+                    'due'     => date('Y-m-d', strtotime('+14 days')),
+                    'status'  => 'active',
+                ];
+                $GLOBALS['loans'][] = $newLoan;
+                return ['success' => true, 'message' => 'Loan created.', 'loan' => $newLoan];
+            }
+        }
+        return ['success' => false, 'message' => 'Book not found.'];
+    }
+
+    // ── Process a return ─────────────────────────────────────
+    public function processReturn(string $loanId): array {
+        for ($i = 0; $i < count($GLOBALS['loans']); $i++) {
+            if ($GLOBALS['loans'][$i]['id'] === $loanId) {
+                if ($GLOBALS['loans'][$i]['status'] === 'returned') {
+                    return ['success' => false, 'message' => 'This loan is already returned.'];
+                }
+                $GLOBALS['loans'][$i]['status'] = 'returned';
+                $bookId = (int)$GLOBALS['loans'][$i]['book_id'];
+
+                for ($j = 0; $j < count($GLOBALS['books']); $j++) {
+                    $bid = is_array($GLOBALS['books'][$j]) ? (int)$GLOBALS['books'][$j]['id'] : $GLOBALS['books'][$j]->getId();
+                    if ($bid === $bookId) {
+                        $GLOBALS['books'][$j]['available']++;
+                        $GLOBALS['books'][$j]['status'] = 'available';
+                        break;
+                    }
+                }
+                return ['success' => true, 'message' => 'Book returned successfully.'];
+            }
+        }
+        return ['success' => false, 'message' => 'Loan not found.'];
+    }
+
+    public function getAllLoans(): array { return $GLOBALS['loans']; }
+
+    public function getDashboardStats(): array {
+        $active = $overdue = 0;
+        foreach ($GLOBALS['loans'] as $loan) {
+            if ($loan['status'] === 'active')  $active++;
+            if ($loan['status'] === 'overdue') $overdue++;
+        }
+        return [
+            'total_books'   => count($GLOBALS['books']),
+            'active_loans'  => $active,
+            'overdue'       => $overdue,
+            'total_members' => count($GLOBALS['users']),
+        ];
+    }
+
+    public function __toString(): string {
+        return "[Admin #{$this->getId()}] {$this->getName()} ({$this->getEmail()}) — Dept: {$this->department}";
+    }
+}
