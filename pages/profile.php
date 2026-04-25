@@ -107,3 +107,15 @@ $preferences = $isStudent
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/navbar.php';
 ?>
+<div class="profile-page">
+    <?php if ($profileSaved): ?>
+        <div class="page-alert alert-success" style="position: fixed; top: 90px; right: 1.75rem; z-index: 999;">
+            ✅ Profile updated successfully.
+        </div>
+    <?php endif; ?>
+
+    <?php if ($profileError !== ''): ?>
+        <div class="page-alert alert-error" style="position: fixed; top: 90px; right: 1.75rem; z-index: 999;">
+            ❌ <?= htmlspecialchars($profileError) ?>
+        </div>
+    <?php endif; ?>
