@@ -1,9 +1,9 @@
 <?php
 // ============================================================
 //  classes/Admin.php
-//  Admin class — extends User
-//  Adds book/loan management capabilities
-//  Phase I — No Database
+//  Klasa Admin — zgjat (extends) User
+//  Shton funksionalitete për menaxhimin e librave dhe huazimeve
+//  Faza I — Pa bazë të dhënash
 // ============================================================
 
 require_once __DIR__ . '/User.php';
@@ -34,7 +34,7 @@ class Admin extends User {
         $this->department = trim($department);
     }
 
-    // ── Add a new book ───────────────────────────────────────
+  // ── Shto një libër të ri ───────────────────────────────────────
     public function addBook(string $title, string $author, string $genre = '', string $isbn = '', int $year = 0, int $copies = 1): array {
         $maxId = 0;
         foreach ($GLOBALS['books'] as $b) {
@@ -56,7 +56,7 @@ class Admin extends User {
         return $newBook;
     }
 
-    // ── Remove a book by ID ──────────────────────────────────
+   // ── Hiq një libër sipas ID-së ──────────────────────────────────
     public function removeBook(int $bookId): bool {
         foreach ($GLOBALS['books'] as $index => $book) {
             $id = is_array($book) ? $book['id'] : $book->getId();
@@ -68,7 +68,7 @@ class Admin extends User {
         return false;
     }
 
-    // ── Update a book ────────────────────────────────────────
+   // ── Përditëso një libër ────────────────────────────────────────
     public function updateBook(int $bookId, array $updates): bool {
         for ($i = 0; $i < count($GLOBALS['books']); $i++) {
             $id = is_array($GLOBALS['books'][$i]) ? $GLOBALS['books'][$i]['id'] : $GLOBALS['books'][$i]->getId();
@@ -85,7 +85,7 @@ class Admin extends User {
         }
         return false;
     }
-        // ── Process a new loan ───────────────────────────────────
+        // ── Proceso kredi te reja───────────────────────────────────
     public function processLoan(int $userId, int $bookId): array {
         for ($i = 0; $i < count($GLOBALS['books']); $i++) {
             $entry = $GLOBALS['books'][$i];
@@ -129,7 +129,7 @@ class Admin extends User {
         return ['success' => false, 'message' => 'Book not found.'];
     }
 
-    // ── Process a return ─────────────────────────────────────
+    // ── Proceso kthim ─────────────────────────────────────
     public function processReturn(string $loanId): array {
         for ($i = 0; $i < count($GLOBALS['loans']); $i++) {
             if ($GLOBALS['loans'][$i]['id'] === $loanId) {
