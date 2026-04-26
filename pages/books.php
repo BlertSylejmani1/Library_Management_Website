@@ -113,3 +113,40 @@ require_once __DIR__ . '/../includes/navbar.php';
             </tbody>
         </table>
     </div>
+    
+    <div class="books-grid modal-hidden" data-view-panel="grid">
+        <?php foreach ($books as $book): ?>
+            <div
+                class="book-card"
+                data-filter-item
+                data-title="<?= htmlspecialchars(strtolower($book['title'])) ?>"
+                data-author="<?= htmlspecialchars(strtolower($book['author'])) ?>"
+                data-isbn="<?= htmlspecialchars(strtolower($book['isbn'])) ?>"
+                data-genre="<?= htmlspecialchars($book['genre']) ?>"
+                data-book='<?= htmlspecialchars(json_encode($book, JSON_HEX_APOS | JSON_HEX_QUOT), ENT_QUOTES) ?>'
+            >
+                <div class="book-card-spine spine-<?= ['blue','teal','purple','orange','red','green'][$book['id'] % 6] ?>"></div>
+                <div class="book-card-body">
+                    <div class="book-card-header">
+                        <span class="genre-tag"><?= htmlspecialchars($book['genre']) ?></span>
+                        <span class="status-pill status-<?= (int) $book['available'] > 0 ? 'available' : 'loaned' ?>">
+                            <?= (int) $book['available'] > 0 ? 'Available' : 'Loaned' ?>
+                        </span>
+                    </div>
+                    <h4 class="book-card-title"><?= htmlspecialchars($book['title']) ?></h4>
+                    <p class="book-card-author"><?= htmlspecialchars($book['author']) ?></p>
+                    <div class="book-card-meta">
+                        <span><?= (int) $book['year'] ?></span>
+                        <span><?= (int) $book['available'] ?>/<?= (int) $book['copies'] ?> available</span>
+                    </div>
+                    <div class="book-card-actions">
+                        <button class="act-btn act-edit" type="button" data-edit-book>Edit</button>
+                        <button class="act-btn act-delete" type="button" data-delete-book data-book-title="<?= htmlspecialchars($book['title']) ?>">Delete</button>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <div class="empty-row modal-hidden" data-filter-empty>No books match your search.</div>
+    </div>
+</div>
+                
