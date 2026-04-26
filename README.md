@@ -28,10 +28,10 @@ Faza II – Integrimi me databazë dhe funksionalitete të avancuara
 - Sessions dhe Cookies
 
 # Ekzekutimi i Projektit 
-1.Vendoseni projektin në folderin htdocs te XAMPP(paraprakisht të jetë i instaluar)
+1. Vendoseni projektin në folderin htdocs te XAMPP(paraprakisht të jetë i instaluar)
 
-2.Startoni Apache Serverin
+2. Startoni Apache Serverin
 
-3.Hapeni në browser http://localhost/library-backend
+3. Hapeni në browser http://localhost/Library_Management_Website/login.php
 
-4.Çasjen në sistem mund të e bëni si Admin me kredencialet: admin@library.com psw:admin123 si dhe si Student me kredencialet : student@library.com psw:student123
+4. Çasjen në sistem mund të e bëni si Admin me kredencialet: admin@library.com psw:admin123 si dhe si Student me kredencialet : student@library.com psw:student123
