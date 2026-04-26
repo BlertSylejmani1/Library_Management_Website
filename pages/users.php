@@ -40,3 +40,44 @@ require_once __DIR__ . '/../includes/navbar.php';
             </button>
         </div>
     </div>
+     <div class="users-grid" data-filter-scope-id="users-grid">
+        <?php foreach ($users as $user): ?>
+            <div class="user-card" data-filter-item data-name="<?= htmlspecialchars(strtolower($user['name'])) ?>" data-email="<?= htmlspecialchars(strtolower($user['email'])) ?>" data-role="<?= htmlspecialchars($user['role']) ?>">
+                <div class="user-card-top">
+                    <div class="user-avatar-lg <?= htmlspecialchars($user['avatarClass']) ?>">
+                        <?= strtoupper(substr($user['name'], 0, 1)) ?>
+                    </div>
+                    <div class="user-card-info">
+                        <h4><?= htmlspecialchars($user['name']) ?></h4>
+                        <span><?= htmlspecialchars($user['email']) ?></span>
+                    </div>
+                </div>
+                <div class="user-card-stats">
+                    <div class="user-stat">
+                        <span class="user-stat-val"><?= htmlspecialchars($user['phone']) ?></span>
+                        <span class="user-stat-label">Phone</span>
+                    </div>
+                    <div class="user-stat-divider"></div>
+                    <div class="user-stat">
+                        <span class="user-stat-val"><?= htmlspecialchars(roleLabel($user['role'])) ?></span>
+                        <span class="user-stat-label">Role</span>
+                    </div>
+                    <div class="user-stat-divider"></div>
+                    <div class="user-stat">
+                        <span class="user-stat-val"><?= htmlspecialchars($user['location']) ?></span>
+                        <span class="user-stat-label">Location</span>
+                    </div>
+                </div>
+                <div class="user-card-footer">
+                    <span><?= htmlspecialchars($user['email']) ?></span>
+                    <div class="action-btns">
+                        <button class="act-btn act-edit" type="button" data-toast-message="Profile editor is ready for server-side integration.">
+                            Edit
+                        </button>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+        <p class="empty-row modal-hidden" data-filter-empty>No users found.</p>
+    </div>
+</div>
