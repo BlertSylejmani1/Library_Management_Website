@@ -59,3 +59,69 @@ class User {
     public function getMaskedPassword(): string {
         return str_repeat('*', strlen($this->password));
     }
+        // ── Setters (me validim bazë) ─────────────────────
+
+    public function setName(string $name): void {
+        // Emri duhet të ketë të paktën 2 karaktere
+        if (strlen(trim($name)) < 2) {
+            throw new InvalidArgumentException('Name must be at least 2 characters.');
+        }
+        $this->name = trim($name);
+    }
+
+    public function setEmail(string $email): void {
+        // Validon email-in me regex
+        if (!self::validateEmail($email)) {
+            throw new InvalidArgumentException("Invalid email format: $email");
+        }
+        $this->email = strtolower(trim($email));
+    }
+
+    public function setPhone(string $phone): void {
+        // Validon numrin e telefonit me regex
+        if (!self::validatePhone($phone)) {
+            throw new InvalidArgumentException("Invalid phone format: $phone");
+        }
+        $this->phone = trim($phone);
+    }
+
+    public function setPassword(string $password): void {
+        // Password duhet të ketë të paktën 6 karaktere
+        if (strlen($password) < 6) {
+            throw new InvalidArgumentException('Password must be at least 6 characters.');
+        }
+        $this->password = $password;
+    }
+
+    public function setRole(string $role): void {
+        $allowed = ['admin', 'student'];
+        if (!in_array($role, $allowed)) {
+            throw new InvalidArgumentException("Role must be one of: " . implode(', ', $allowed));
+        }
+        $this->role = $role;
+    }
+
+    // ── Kontrollo password-in ───────────────────────────────
+    // Krahason password-in (pa hashing — Faza I)
+    // Faza II do përdorë password_verify()
+    public function checkPassword(string $input): bool {
+        return $input === $this->password;
+    }
+
+    // ── Validim me REGEX (statik — i ripërdorshëm) ────────
+
+    /**
+     * Validon formatin e email-it
+     */
+    public static function validateEmail(string $email): bool {
+        $pattern = '/^[a-zA-Z0-9._\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/';
+        return (bool) preg_match($pattern, $email);
+    }
+
+    /**
+     * Validon numrin e telefonit
+     */
+    public static function validatePhone(string $phone): bool {
+        $pattern = '/^\+?[\d\s\(\)\-]{7,20}$/';
+        return (bool) preg_match($pattern, $phone);
+    }
