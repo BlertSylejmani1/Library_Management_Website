@@ -149,4 +149,58 @@ require_once __DIR__ . '/../includes/navbar.php';
         <div class="empty-row modal-hidden" data-filter-empty>No books match your search.</div>
     </div>
 </div>
-                
+
+<div class="modal-overlay modal-hidden" id="bookEditorModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2 data-book-modal-title>Add New Book</h2>
+            <button class="modal-close" type="button" data-modal-close="bookEditorModal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form data-static-form data-success-message="Book details saved." data-close-modal="bookEditorModal">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Title <span class="req">*</span></label>
+                        <input name="title" type="text" placeholder="Book title" required />
+                    </div>
+                    <div class="form-field">
+                        <label>Author <span class="req">*</span></label>
+                        <input name="author" type="text" placeholder="Author name" required />
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>ISBN <span class="req">*</span></label>
+                        <input name="isbn" type="text" placeholder="978-XXXXXXXXXX" required />
+                    </div>
+                    <div class="form-field">
+                        <label>Genre</label>
+                        <select name="genre">
+                            <?php foreach (array_slice($genres, 1) as $genre): ?>
+                                <option value="<?= htmlspecialchars($genre) ?>"><?= htmlspecialchars($genre) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Year</label>
+                        <input name="year" type="number" min="1000" max="2100" placeholder="e.g. 2023" />
+                    </div>
+                    <div class="form-field">
+                        <label>Copies</label>
+                        <input name="copies" type="number" min="1" max="99" value="1" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" type="button" data-modal-close="bookEditorModal">Cancel</button>
+                    <button class="btn-primary" type="submit">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>                
