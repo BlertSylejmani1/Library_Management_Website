@@ -204,6 +204,7 @@ require_once __DIR__ . '/../includes/navbar.php';
         </div>
     </div>
 </div>
+
 <div class="modal-overlay modal-hidden" id="bookDeleteModal">
     <div class="modal-box confirm-box">
         <div class="confirm-icon">🗑️</div>
