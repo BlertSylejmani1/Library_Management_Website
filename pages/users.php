@@ -81,3 +81,43 @@ require_once __DIR__ . '/../includes/navbar.php';
         <p class="empty-row modal-hidden" data-filter-empty>No users found.</p>
     </div>
 </div>
+
+<div class="modal-overlay modal-hidden" id="addMemberModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2>Register New Member</h2>
+            <button class="modal-close" type="button" data-modal-close="addMemberModal">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form data-static-form data-success-message="Member registered successfully." data-close-modal="addMemberModal">
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Full Name <span class="req">*</span></label>
+                        <input type="text" placeholder="e.g. Arta Berisha" required />
+                    </div>
+                    <div class="form-field">
+                        <label>Email <span class="req">*</span></label>
+                        <input type="email" placeholder="student@uni-pr.edu" required />
+                    </div>
+                </div>
+                <div class="form-field">
+                    <label>Role</label>
+                    <select>
+                        <option value="student">Student</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="modal-footer" style="padding-top: 1.25rem;">
+                    <button class="btn-secondary" type="button" data-modal-close="addMemberModal">Cancel</button>
+                    <button class="btn-primary" type="submit">Register Member</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>
+
