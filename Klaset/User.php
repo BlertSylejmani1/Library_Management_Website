@@ -125,3 +125,50 @@ class User {
         $pattern = '/^\+?[\d\s\(\)\-]{7,20}$/';
         return (bool) preg_match($pattern, $phone);
     }
+        // ── Shndërro përdoruesin në array ───────────────────────
+    public function toArray(): array {
+        return [
+            'id'    => $this->id,
+            'name'  => $this->name,
+            'email' => $this->email,
+            'role'  => $this->role,
+            'phone' => $this->phone,
+        ];
+    }
+
+    // ── Paraqitje si tekst ────────────────────────────────
+    public function __toString(): string {
+        return "[User #{$this->id}] {$this->name} ({$this->email}) — Role: {$this->role}";
+    }
+
+    // ── Krijo User nga array ───────────────────────────────
+    public static function fromArray(array $data): self {
+        return new self(
+            $data['id'],
+            $data['name'],
+            $data['email'],
+            $data['password'],
+            $data['role']  ?? 'student',
+            $data['phone'] ?? ''
+        );
+    }
+
+    // ── Gjej përdorues sipas email-it ───────────────────────
+    public static function findByEmail(string $email): ?self {
+        foreach ($GLOBALS['users'] as $userData) {
+            if (strtolower($userData['email']) === strtolower($email)) {
+                return self::fromArray($userData);
+            }
+        }
+        return null;
+    }
+
+    // ── Autentikim (login) ──────────────────────────────────
+    public static function authenticate(string $email, string $password): ?self {
+        $user = self::findByEmail($email);
+        if ($user && $user->checkPassword($password)) {
+            return $user;
+        }
+        return null;
+    }
+}
