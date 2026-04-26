@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 define('APP_NAME',    'Library Management System');
 define('APP_VERSION', '1.0.0');
 define('APP_ROOT',    dirname(__DIR__));
-define('BASE_URL',    'http://localhost/Library-Management-Website');
+define('BASE_URL',    'http://localhost/Library_Management_Website');
 define('COOKIE_THEME',  'ath_theme');
 define('COOKIE_EXPIRE', time() + 60 * 60 * 24 * 30);
 define('ROLE_ADMIN',   'admin');
