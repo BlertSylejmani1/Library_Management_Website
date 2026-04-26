@@ -203,4 +203,16 @@ require_once __DIR__ . '/../includes/navbar.php';
             </form>
         </div>
     </div>
-</div>                
+</div>
+<div class="modal-overlay modal-hidden" id="bookDeleteModal">
+    <div class="modal-box confirm-box">
+        <div class="confirm-icon">🗑️</div>
+        <h3>Delete this book?</h3>
+        <p data-delete-copy>This will be permanently removed from the catalogue.</p>
+        <div class="modal-footer">
+            <button class="btn-secondary" type="button" data-modal-close="bookDeleteModal">Cancel</button>
+            <button class="btn-danger" type="button" data-toast-message="Book removed from catalogue." data-modal-close="bookDeleteModal">Delete</button>
+        </div>
+    </div>
+</div>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>                
