@@ -40,3 +40,25 @@ try {
         ]);
         exit;
     }
+
+    if ($action === 'renew') {
+        $result = $repository->renew($loanId, 14, $isAdmin ? null : (int) ($currentUser['id'] ?? 0));
+        echo json_encode([
+            'success' => true,
+            'message' => 'Loan renewed for 14 more days.',
+            'loan_id' => $loanId,
+            'due_at' => $result['due_at'],
+            'status' => $result['status'],
+            'renewal_count' => $result['renewal_count'],
+        ]);
+        exit;
+    }
+
+    throw new RuntimeException('Unsupported loan action.');
+} catch (Throwable $exception) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => $exception->getMessage(),
+    ]);
+}
