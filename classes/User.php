@@ -126,6 +126,13 @@ class User {
         return (bool) preg_match($pattern, $phone);
     }
         // ── Shndërro përdoruesin në array ───────────────────────
+    /**
+     * Validon password-in
+     */
+    public static function validatePassword(string $password): bool {
+        return strlen($password) >= 6;
+    }
+
     public function toArray(): array {
         return [
             'id'    => $this->id,

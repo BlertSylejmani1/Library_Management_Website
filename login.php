@@ -85,17 +85,7 @@ require_once __DIR__ . '/includes/header.php';
                 </svg>
             </div>
             <h1 class="login-brand-name"><?= h(APP_NAME) ?></h1>
-            <div class="login-feature-list">
-                <?php foreach ([
-                    ['icon' => 'Books', 'label' => 'MySQL-backed catalogue and loans'],
-                    ['icon' => 'Users', 'label' => 'Role-aware admin and student access'],
-                    ['icon' => 'AJAX', 'label' => 'AJAX actions without full refresh'],
-                    ['icon' => 'API', 'label' => 'Open Library lookup integration'],
-                ] as $index => $feature): ?>
-                    <div class="login-feature-item" style="animation-delay: <?= number_format($index * 0.1, 1) ?>s">
-                        <span class="feature-icon"><?= h($feature['icon']) ?></span>
-                        <span><?= h($feature['label']) ?></span>
-                    </div>
+            
                 <?php endforeach; ?>
             </div>
             <div class="login-testimonial">
