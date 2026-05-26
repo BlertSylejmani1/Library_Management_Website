@@ -106,3 +106,102 @@ class BookRequestRepository
 
         return $request;
     }
+    public function approve(int $requestId, int $adminId, int $days = 14): array
+    {
+        $this->db->beginTransaction();
+
+        try {
+            $requestStatement = $this->db->prepare(
+                'SELECT br.*, b.copies_available, b.title AS book_title
+                 FROM book_requests br
+                 INNER JOIN books b ON b.id = br.book_id
+                 WHERE br.id = :id
+                 FOR UPDATE'
+            );
+            $requestStatement->execute(['id' => $requestId]);
+            $request = $requestStatement->fetch();
+
+            if (!$request) {
+                throw new RuntimeException('Request not found.');
+            }
+
+            if ($request['status'] !== 'pending') {
+                throw new RuntimeException('This request has already been reviewed.');
+            }
+
+            if ((int) $request['copies_available'] < 1) {
+                throw new RuntimeException('This book is not available right now.');
+            }
+
+            $issuedAt = date('Y-m-d');
+            $dueAt = date('Y-m-d', strtotime('+' . max(1, min(60, $days)) . ' days'));
+
+            $loanStatement = $this->db->prepare(
+                "INSERT INTO loans
+                    (user_id, book_id, issued_at, due_at, returned_at, status, notes, created_by, renewal_count, created_at, updated_at)
+                 VALUES
+                    (:user_id, :book_id, :issued_at, :due_at, NULL, 'active', :notes, :created_by, 0, NOW(), NOW())"
+            );
+            $loanStatement->execute([
+                'user_id' => (int) $request['user_id'],
+                'book_id' => (int) $request['book_id'],
+                'issued_at' => $issuedAt,
+                'due_at' => $dueAt,
+                'notes' => 'Approved student request #' . $requestId,
+                'created_by' => $adminId,
+            ]);
+
+            $updateBook = $this->db->prepare(
+                "UPDATE books
+                 SET copies_available = CASE WHEN copies_available > 0 THEN copies_available - 1 ELSE 0 END,
+                     status = CASE WHEN copies_available > 1 THEN 'available' ELSE 'loaned' END,
+                     updated_at = NOW()
+                 WHERE id = :id AND copies_available > 0"
+            );
+            $updateBook->execute(['id' => (int) $request['book_id']]);
+
+            if ($updateBook->rowCount() !== 1) {
+                throw new RuntimeException('The last copy was just loaned. Please review this request later.');
+            }
+
+            $updateRequest = $this->db->prepare(
+                "UPDATE book_requests
+                 SET status = 'approved', admin_note = :admin_note, reviewed_by = :reviewed_by, reviewed_at = NOW(), updated_at = NOW()
+                 WHERE id = :id"
+            );
+            $updateRequest->execute([
+                'id' => $requestId,
+                'admin_note' => 'Approved and converted to loan due ' . $dueAt,
+                'reviewed_by' => $adminId,
+            ]);
+
+            $this->db->commit();
+
+            return [
+                'book_title' => $request['book_title'],
+                'due_at' => $dueAt,
+            ];
+        } catch (Throwable $exception) {
+            $this->db->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function reject(int $requestId, int $adminId, string $note = ''): void
+    {
+        $statement = $this->db->prepare(
+            "UPDATE book_requests
+             SET status = 'rejected', admin_note = :admin_note, reviewed_by = :reviewed_by, reviewed_at = NOW(), updated_at = NOW()
+             WHERE id = :id AND status = 'pending'"
+        );
+        $statement->execute([
+            'id' => $requestId,
+            'admin_note' => trim($note) ?: 'Rejected by librarian.',
+            'reviewed_by' => $adminId,
+        ]);
+
+        if ($statement->rowCount() !== 1) {
+            throw new RuntimeException('Request not found or already reviewed.');
+        }
+    }
+}
