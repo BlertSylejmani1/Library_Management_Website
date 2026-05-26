@@ -1,6 +1,10 @@
 <?php
+
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../classes/Database.php';
+require_once __DIR__ . '/../classes/Mailer.php';
 require_once __DIR__ . '/../classes/User.php';
+require_once __DIR__ . '/../classes/UserRepository.php';
 
 requireLogin();
 
@@ -9,87 +13,135 @@ $activePage = 'profile';
 $pageTitle = 'My Profile';
 $pageSubtitle = 'Manage your account and preferences.';
 $isStudent = ($currentUser['role'] ?? ROLE_STUDENT) === ROLE_STUDENT;
-
 $profileError = '';
-$profileSaved = false;
+$profileFlash = pullFlash('profile');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $submittedName = trim($_POST['name'] ?? '');
-    $submittedEmail = trim($_POST['email'] ?? '');
-    $submittedPhone = trim($_POST['phone'] ?? '');
-    $submittedLocation = trim($_POST['location'] ?? '');
-    $submittedBio = trim($_POST['bio'] ?? '');
-    $submittedStudentId = trim($_POST['studentId'] ?? '');
-    $submittedFaculty = trim($_POST['faculty'] ?? '');
+try {
+    $userRepository = new UserRepository(Database::connection());
+    $dbUser = $userRepository->findById((int) ($currentUser['id'] ?? 0));
 
-    try {
-        $sessionUser = User::fromArray([
-            'id' => $currentUser['id'],
-            'name' => $currentUser['name'],
-            'email' => $currentUser['email'],
-            'password' => '',
-            'role' => $currentUser['role'],
-            'phone' => $currentUser['phone'] ?? '',
-        ]);
-
-        $sessionUser->setName($submittedName);
-
-        if (!User::validateEmail($submittedEmail)) {
-            throw new InvalidArgumentException('Please enter a valid email address.');
-        }
-        if (!User::validatePhone($submittedPhone)) {
-            throw new InvalidArgumentException('Please enter a valid phone number.');
-        }
-
-        $sessionUser->setEmail($submittedEmail);
-        $sessionUser->setPhone($submittedPhone);
-
-        $_SESSION['user']['name'] = $sessionUser->getName();
-        $_SESSION['user']['email'] = $sessionUser->getEmail();
-        $_SESSION['user']['phone'] = $sessionUser->getPhone();
-
-        $currentUser = getSessionUser();
-        $profileSaved = true;
-    } catch (InvalidArgumentException $exception) {
-        $profileError = $exception->getMessage();
+    if (!$dbUser) {
+        throw new RuntimeException('Profile not found in the database.');
     }
-}
 
-$profile = [
-    'name' => $currentUser['name'] ?? 'Alexandra Reed',
-    'email' => $currentUser['email'] ?? 'admin@library.com',
-    'phone' => $currentUser['phone'] ?? ($isStudent ? '+383 44 123 456' : '+383 38 500 600'),
-    'role' => roleLabel($currentUser['role'] ?? ROLE_ADMIN),
-    'location' => 'Prishtina, Kosovo',
-    'bio' => $isStudent
-        ? 'Computer Science student at the University of Prishtina. Passionate about algorithms and software engineering.'
-        : 'Head librarian with 12 years of experience in cataloguing and collection management.',
-    'studentId' => $isStudent ? 'UP-2024-0042' : '',
-    'faculty' => $isStudent ? 'Faculty of Electrical and Computer Engineering' : '',
-];
+    if (isPost()) {
+        verify_csrf_or_fail();
+        $action = $_POST['action'] ?? 'profile';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $profile['name'] = trim($_POST['name'] ?? $profile['name']);
-    $profile['email'] = trim($_POST['email'] ?? $profile['email']);
-    $profile['phone'] = trim($_POST['phone'] ?? $profile['phone']);
-    $profile['location'] = trim($_POST['location'] ?? $profile['location']);
-    $profile['bio'] = trim($_POST['bio'] ?? $profile['bio']);
-    if ($isStudent) {
-        $profile['studentId'] = trim($_POST['studentId'] ?? $profile['studentId']);
-        $profile['faculty'] = trim($_POST['faculty'] ?? $profile['faculty']);
+        if ($action === 'profile') {
+            $submittedName = trim($_POST['name'] ?? '');
+            $submittedEmail = trim($_POST['email'] ?? '');
+            $submittedPhone = trim($_POST['phone'] ?? '');
+            $submittedLocation = trim($_POST['location'] ?? '');
+            $submittedBio = trim($_POST['bio'] ?? '');
+            $submittedStudentId = trim($_POST['student_id'] ?? '');
+            $submittedFaculty = trim($_POST['faculty'] ?? '');
+
+            $sessionUser = new User(
+                (int) $dbUser['id'],
+                $submittedName,
+                $submittedEmail,
+                $dbUser['password'],
+                $dbUser['role'],
+                $submittedPhone
+            );
+
+            $userRepository->updateProfile((int) $dbUser['id'], [
+                'name' => $sessionUser->getName(),
+                'email' => $sessionUser->getEmail(),
+                'phone' => $sessionUser->getPhone(),
+                'location' => $submittedLocation,
+                'bio' => $submittedBio,
+                'student_id' => $submittedStudentId,
+                'faculty' => $submittedFaculty,
+            ]);
+
+            $_SESSION['user']['name'] = $sessionUser->getName();
+            $_SESSION['user']['email'] = $sessionUser->getEmail();
+            $_SESSION['user']['phone'] = $sessionUser->getPhone();
+
+            flash('profile', 'Profile updated successfully.');
+            redirect('pages/profile.php');
+        }
+
+        if ($action === 'password') {
+            $currentPassword = trim($_POST['current_password'] ?? '');
+            $newPassword = trim($_POST['new_password'] ?? '');
+            $confirmPassword = trim($_POST['confirm_password'] ?? '');
+
+            if (!$userRepository->authenticate($dbUser['email'], $currentPassword)) {
+                throw new InvalidArgumentException('Current password is incorrect.');
+            }
+
+            if (!User::validatePassword($newPassword)) {
+                throw new InvalidArgumentException('New password must be at least 6 characters.');
+            }
+
+            if ($newPassword !== $confirmPassword) {
+                throw new InvalidArgumentException('New passwords do not match.');
+            }
+
+            $userRepository->changePassword((int) $dbUser['id'], $newPassword);
+            flash('profile', 'Password changed successfully.');
+            redirect('pages/profile.php');
+        }
+
+        if ($action === 'contact') {
+            $subject = trim($_POST['subject'] ?? '');
+            $message = trim($_POST['message'] ?? '');
+
+            if ($subject === '' || strlen($message) < 10) {
+                throw new InvalidArgumentException('Please enter a subject and a longer message.');
+            }
+
+            $mailResult = Mailer::send(
+                'library@uni-pr.edu',
+                '[Library App] ' . $subject,
+                "Sender: {$dbUser['name']} <{$dbUser['email']}>" . PHP_EOL . PHP_EOL . $message,
+                $dbUser['email']
+            );
+
+            flash('profile', $mailResult['sent'] ? 'Email sent successfully.' : 'Mail server unavailable, but your message was saved to the local log.');
+            redirect('pages/profile.php');
+        }
     }
+
+    $profile = [
+        'name' => $dbUser['name'],
+        'email' => $dbUser['email'],
+        'phone' => $dbUser['phone'] ?: ($isStudent ? '+383 44 123 456' : '+383 38 500 600'),
+        'role' => roleLabel($dbUser['role']),
+        'location' => $dbUser['location'] ?: 'Prishtina, Kosovo',
+        'bio' => $dbUser['bio'] ?: ($isStudent
+            ? 'Computer Science student at the University of Prishtina. Passionate about algorithms and software engineering.'
+            : 'Head librarian with experience in cataloguing and collection management.'),
+        'studentId' => $dbUser['student_id'] ?: ($isStudent ? 'UP-2026-0042' : ''),
+        'faculty' => $dbUser['faculty'] ?: ($isStudent ? 'Faculty of Electrical and Computer Engineering' : ''),
+    ];
+} catch (Throwable $exception) {
+    $profileError = $exception->getMessage();
+    $profile = [
+        'name' => $currentUser['name'] ?? 'User',
+        'email' => $currentUser['email'] ?? '',
+        'phone' => $currentUser['phone'] ?? '',
+        'role' => roleLabel($currentUser['role'] ?? ROLE_STUDENT),
+        'location' => 'Prishtina, Kosovo',
+        'bio' => '',
+        'studentId' => '',
+        'faculty' => '',
+    ];
 }
 
 $profileStats = $isStudent
     ? [
-        ['label' => 'Active Loans', 'value' => '1'],
-        ['label' => 'Total Borrowed', 'value' => '3'],
-        ['label' => 'Books Returned', 'value' => '2'],
+        ['label' => 'Active Loans', 'value' => 'Live'],
+        ['label' => 'Notifications', 'value' => 'Enabled'],
+        ['label' => 'Profile Sync', 'value' => 'DB'],
     ]
     : [
-        ['label' => 'Books Managed', 'value' => '12,847'],
-        ['label' => 'Active Loans', 'value' => '384'],
-        ['label' => 'Members', 'value' => '2,491'],
+        ['label' => 'Books Managed', 'value' => 'Live'],
+        ['label' => 'Mail Logging', 'value' => 'Ready'],
+        ['label' => 'Profile Sync', 'value' => 'DB'],
     ];
 
 $preferences = $isStudent
@@ -108,133 +160,156 @@ require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/navbar.php';
 ?>
 <div class="profile-page">
-    <?php if ($profileSaved): ?>
-        <div class="page-alert alert-success" style="position: fixed; top: 90px; right: 1.75rem; z-index: 999;">
-            ✅ Profile updated successfully.
+    <?php if ($profileFlash): ?>
+        <div class="page-alert alert-<?= h($profileFlash['type']) ?>" style="position: fixed; top: 90px; right: 1.75rem; z-index: 999;">
+            <?= h($profileFlash['message']) ?>
         </div>
     <?php endif; ?>
 
     <?php if ($profileError !== ''): ?>
         <div class="page-alert alert-error" style="position: fixed; top: 90px; right: 1.75rem; z-index: 999;">
-            ❌ <?= htmlspecialchars($profileError) ?>
+            <?= h($profileError) ?>
         </div>
     <?php endif; ?>
 
     <div class="profile-layout">
         <div class="profile-sidebar-card">
             <div class="profile-avatar-wrap">
-                <div class="profile-avatar-xl"><?= strtoupper(substr($profile['name'], 0, 1)) ?></div>
+                <div class="profile-avatar-xl"><?= h(strtoupper(substr($profile['name'], 0, 1))) ?></div>
                 <button class="profile-avatar-edit" type="button">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
+                    Edit
                 </button>
             </div>
-            <h3 class="profile-name" data-profile-preview="name"><?= htmlspecialchars($profile['name']) ?></h3>
-            <span class="profile-role-tag"><?= htmlspecialchars($profile['role']) ?></span>
-            <p class="profile-bio" data-profile-preview="bio"><?= htmlspecialchars($profile['bio']) ?></p>
+            <h3 class="profile-name" data-profile-preview="name"><?= h($profile['name']) ?></h3>
+            <span class="profile-role-tag"><?= h($profile['role']) ?></span>
+            <p class="profile-bio" data-profile-preview="bio"><?= h($profile['bio']) ?></p>
 
             <div class="profile-stats">
                 <?php foreach ($profileStats as $stat): ?>
                     <div class="ps-stat">
-                        <span class="ps-val"><?= htmlspecialchars($stat['value']) ?></span>
-                        <span class="ps-label"><?= htmlspecialchars($stat['label']) ?></span>
+                        <span class="ps-val"><?= h($stat['value']) ?></span>
+                        <span class="ps-label"><?= h($stat['label']) ?></span>
                     </div>
                 <?php endforeach; ?>
             </div>
 
             <div class="profile-meta-list">
-                <div class="profile-meta-item"><?= htmlspecialchars($profile['email']) ?></div>
-                <div class="profile-meta-item" data-profile-preview="phone"><?= htmlspecialchars($profile['phone']) ?></div>
-                <div class="profile-meta-item" data-profile-preview="location"><?= htmlspecialchars($profile['location']) ?></div>
+                <div class="profile-meta-item"><?= h($profile['email']) ?></div>
+                <div class="profile-meta-item" data-profile-preview="phone"><?= h($profile['phone']) ?></div>
+                <div class="profile-meta-item" data-profile-preview="location"><?= h($profile['location']) ?></div>
                 <?php if ($isStudent && $profile['studentId'] !== ''): ?>
-                    <div class="profile-meta-item" data-profile-preview="studentId"><?= htmlspecialchars($profile['studentId']) ?></div>
+                    <div class="profile-meta-item" data-profile-preview="studentId"><?= h($profile['studentId']) ?></div>
                 <?php endif; ?>
             </div>
         </div>
 
         <div class="profile-form-area">
             <form method="post" action="<?= BASE_URL ?>/pages/profile.php" data-profile-form>
+                <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>" />
+                <input type="hidden" name="action" value="profile" />
                 <div class="profile-section">
                     <h3>Personal Information</h3>
                     <div class="form-row">
                         <div class="form-field">
                             <label>Full Name</label>
-                            <input name="name" value="<?= htmlspecialchars($profile['name']) ?>" data-profile-field="name" required />
+                            <input name="name" value="<?= h($profile['name']) ?>" data-profile-field="name" required />
                         </div>
                         <div class="form-field">
                             <label>Email Address</label>
-                            <input type="email" name="email" value="<?= htmlspecialchars($profile['email']) ?>" required />
+                            <input type="email" name="email" value="<?= h($profile['email']) ?>" required />
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-field">
                             <label>Phone Number</label>
-                            <input name="phone" value="<?= htmlspecialchars($profile['phone']) ?>" data-profile-field="phone" required />
+                            <input name="phone" value="<?= h($profile['phone']) ?>" data-profile-field="phone" required />
                         </div>
                         <div class="form-field">
                             <label>Location</label>
-                            <input name="location" value="<?= htmlspecialchars($profile['location']) ?>" data-profile-field="location" />
+                            <input name="location" value="<?= h($profile['location']) ?>" data-profile-field="location" />
                         </div>
                     </div>
                     <?php if ($isStudent): ?>
                         <div class="form-row">
                             <div class="form-field">
                                 <label>Student ID</label>
-                                <input name="studentId" value="<?= htmlspecialchars($profile['studentId']) ?>" data-profile-field="studentId" />
+                                <input name="student_id" value="<?= h($profile['studentId']) ?>" data-profile-field="studentId" />
                             </div>
                             <div class="form-field">
                                 <label>Faculty</label>
-                                <input name="faculty" value="<?= htmlspecialchars($profile['faculty']) ?>" />
+                                <input name="faculty" value="<?= h($profile['faculty']) ?>" />
                             </div>
                         </div>
                     <?php endif; ?>
                     <div class="form-field">
                         <label>Bio</label>
-                        <textarea name="bio" rows="3" data-profile-field="bio"><?= htmlspecialchars($profile['bio']) ?></textarea>
+                        <textarea name="bio" rows="3" data-profile-field="bio"><?= h($profile['bio']) ?></textarea>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-primary" type="submit">Save Profile</button>
                     </div>
                 </div>
+            </form>
 
+            <form method="post" action="<?= BASE_URL ?>/pages/profile.php">
+                <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>" />
+                <input type="hidden" name="action" value="password" />
                 <div class="profile-section">
                     <h3>Security</h3>
                     <div class="form-row">
                         <div class="form-field">
                             <label>Current Password</label>
-                            <input type="password" placeholder="••••••••" />
+                            <input type="password" name="current_password" placeholder="Current password" />
                         </div>
                         <div class="form-field">
                             <label>New Password</label>
-                            <input type="password" placeholder="••••••••" />
+                            <input type="password" name="new_password" placeholder="At least 6 characters" />
                         </div>
                     </div>
                     <div class="form-field" style="max-width: calc(50% - 0.4375rem);">
                         <label>Confirm New Password</label>
-                        <input type="password" placeholder="••••••••" />
+                        <input type="password" name="confirm_password" placeholder="Repeat new password" />
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-primary" type="submit">Update Password</button>
                     </div>
                 </div>
+            </form>
 
-                <div class="profile-section">
-                    <h3>Preferences</h3>
-                    <div class="prefs-list">
-                        <?php foreach ($preferences as $index => $preference): ?>
-                            <div class="pref-item">
-                                <div>
-                                    <p><?= htmlspecialchars($preference['label']) ?></p>
-                                    <span><?= htmlspecialchars($preference['desc']) ?></span>
-                                </div>
-                                <label class="toggle-switch">
-                                    <input type="checkbox" <?= $preference['checked'] ? 'checked' : '' ?> />
-                                    <span class="toggle-track"></span>
-                                </label>
+            <div class="profile-section">
+                <h3>Preferences</h3>
+                <div class="prefs-list">
+                    <?php foreach ($preferences as $preference): ?>
+                        <div class="pref-item">
+                            <div>
+                                <p><?= h($preference['label']) ?></p>
+                                <span><?= h($preference['desc']) ?></span>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" <?= $preference['checked'] ? 'checked' : '' ?> />
+                                <span class="toggle-track"></span>
+                            </label>
+                        </div>
+                    <?php endforeach; ?>
                 </div>
+            </div>
 
-                <div class="profile-actions">
-                    <button class="btn-secondary" type="reset">Discard Changes</button>
-                    <button class="btn-primary" type="submit">Save Changes</button>
+            <form method="post" action="<?= BASE_URL ?>/pages/profile.php">
+                <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>" />
+                <input type="hidden" name="action" value="contact" />
+                <div class="profile-section">
+                    <h3>Contact Librarian</h3>
+                    <div class="form-field">
+                        <label>Subject</label>
+                        <input type="text" name="subject" placeholder="Question about a loan or book" />
+                    </div>
+                    <div class="form-field">
+                        <label>Message</label>
+                        <textarea name="message" rows="4" placeholder="Write your message here..."></textarea>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-primary" type="submit">Send Email</button>
+                    </div>
                 </div>
             </form>
         </div>
