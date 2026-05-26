@@ -1,36 +1,97 @@
 <?php
+
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../classes/Database.php';
+require_once __DIR__ . '/../classes/BookRepository.php';
+require_once __DIR__ . '/../classes/LoanRepository.php';
+require_once __DIR__ . '/../classes/UserRepository.php';
 
 requireAdmin();
 
 $activePage = 'loans';
 $pageTitle = 'Loans';
 $pageSubtitle = 'Track all active and past book loans.';
-$loans = $GLOBALS['loans'];
-$counts = [
-    'active' => count(array_filter($loans, fn ($loan) => $loan['status'] === 'active')),
-    'overdue' => count(array_filter($loans, fn ($loan) => $loan['status'] === 'overdue')),
-    'returned' => count(array_filter($loans, fn ($loan) => $loan['status'] === 'returned')),
-];
+$flash = pullFlash('loans');
+$pageError = '';
+
+try {
+    $db = Database::connection();
+    $loanRepository = new LoanRepository($db);
+    $bookRepository = new BookRepository($db);
+    $userRepository = new UserRepository($db);
+
+    if (isPost()) {
+        try {
+            verify_csrf_or_fail();
+
+            $userId = (int) ($_POST['user_id'] ?? 0);
+            $bookId = (int) ($_POST['book_id'] ?? 0);
+            $duration = max(1, min(60, (int) ($_POST['duration_days'] ?? 14)));
+            $notes = trim($_POST['notes'] ?? '');
+            $issuedAt = date('Y-m-d');
+            $dueAt = date('Y-m-d', strtotime('+' . $duration . ' days'));
+            $status = $dueAt < date('Y-m-d') ? 'overdue' : 'active';
+
+            $loanRepository->create([
+                'user_id' => $userId,
+                'book_id' => $bookId,
+                'issued_at' => $issuedAt,
+                'due_at' => $dueAt,
+                'status' => $status,
+                'notes' => $notes,
+                'created_by' => (int) ($_SESSION['user']['id'] ?? 0),
+            ]);
+
+            flash('loans', 'Loan created successfully.');
+        } catch (Throwable $exception) {
+            flash('loans', $exception->getMessage(), 'error');
+        }
+
+        redirect('pages/loans.php');
+    }
+
+    $loans = $loanRepository->all();
+    $counts = $loanRepository->counts();
+    $members = $userRepository->all(ROLE_STUDENT);
+    $books = $bookRepository->availableForLoans();
+} catch (Throwable $exception) {
+    $loans = [];
+    $counts = ['active' => 0, 'overdue' => 0, 'returned' => 0];
+    $members = [];
+    $books = [];
+    $pageError = $exception->getMessage();
+}
 
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../includes/navbar.php';
 ?>
 <div class="books-page loans-page">
+    <?php if ($flash): ?>
+        <div class="page-alert alert-<?= h($flash['type']) ?>" style="position: fixed; top: 90px; right: 1.75rem; z-index: 999;">
+            <?= h($flash['message']) ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($pageError !== ''): ?>
+        <div class="page-alert alert-error" style="position: fixed; top: 90px; right: 1.75rem; z-index: 999;">
+            <?= h($pageError) ?>
+        </div>
+    <?php endif; ?>
+
     <div class="loans-summary">
         <div class="loan-summary-card lsc-active" data-loan-filter-trigger="active">
-            <span class="lsc-icon">🔄</span>
-            <span class="lsc-val"><?= $counts['active'] ?></span>
+            <span class="lsc-icon">Active</span>
+            <span class="lsc-val" data-loan-count="active"><?= (int) ($counts['active'] ?? 0) ?></span>
             <span class="lsc-label">Active</span>
         </div>
         <div class="loan-summary-card lsc-overdue" data-loan-filter-trigger="overdue">
-            <span class="lsc-icon">⚠️</span>
-            <span class="lsc-val"><?= $counts['overdue'] ?></span>
+            <span class="lsc-icon">Due</span>
+            <span class="lsc-val" data-loan-count="overdue"><?= (int) ($counts['overdue'] ?? 0) ?></span>
             <span class="lsc-label">Overdue</span>
         </div>
         <div class="loan-summary-card lsc-returned" data-loan-filter-trigger="returned">
-            <span class="lsc-icon">✅</span>
-            <span class="lsc-val"><?= $counts['returned'] ?></span>
+            <span class="lsc-icon">Done</span>
+            <span class="lsc-val" data-loan-count="returned"><?= (int) ($counts['returned'] ?? 0) ?></span>
             <span class="lsc-label">Returned</span>
         </div>
     </div>
@@ -38,22 +99,17 @@ require_once __DIR__ . '/../includes/navbar.php';
     <div class="page-header" style="margin-bottom: 1rem;">
         <div class="genre-tabs">
             <?php foreach (['all' => 'All', 'active' => 'Active', 'overdue' => 'Overdue', 'returned' => 'Returned'] as $key => $label): ?>
-                <button class="genre-tab <?= $key === 'all' ? 'active' : '' ?>" type="button" data-loan-filter="<?= htmlspecialchars($key) ?>">
-                    <?= htmlspecialchars($label) ?><?= $key !== 'all' ? ' (' . ($counts[$key] ?? 0) . ')' : '' ?>
+                <button class="genre-tab <?= $key === 'all' ? 'active' : '' ?>" type="button" data-loan-filter="<?= h($key) ?>">
+                    <?= h($label) ?><?= $key !== 'all' ? ' (' . ((int) ($counts[$key] ?? 0)) . ')' : '' ?>
                 </button>
             <?php endforeach; ?>
         </div>
         <div class="page-header-right" style="margin-left: auto;">
-            <button class="add-btn" type="button" data-modal-open="newLoanModal">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                New Loan
-            </button>
+            <button class="add-btn" type="button" data-modal-open="newLoanModal">New Loan</button>
         </div>
     </div>
 
-    <div class="table-card">
+    <div class="table-card loans-table-card">
         <table class="books-table loans-table-full">
             <thead>
                 <tr>
@@ -63,19 +119,19 @@ require_once __DIR__ . '/../includes/navbar.php';
             <tbody>
                 <?php foreach ($loans as $loan): ?>
                     <?php
-                    $dueTimestamp = strtotime($loan['due']);
+                    $dueTimestamp = strtotime($loan['due_at']);
                     $daysLeft = (int) round(($dueTimestamp - strtotime('today')) / 86400);
                     ?>
-                    <tr data-loan-row data-status="<?= htmlspecialchars($loan['status']) ?>">
-                        <td><code class="loan-id"><?= htmlspecialchars($loan['id']) ?></code></td>
-                        <td><span class="book-title-cell"><?= htmlspecialchars($loan['book']) ?></span></td>
-                        <td><?= htmlspecialchars($loan['member']) ?></td>
-                        <td><span class="date-cell"><?= htmlspecialchars($loan['issued']) ?></span></td>
-                        <td><span class="date-cell"><?= htmlspecialchars($loan['due']) ?></span></td>
-                        <td><span class="status-pill status-<?= htmlspecialchars($loan['status']) ?>"><?= ucfirst($loan['status']) ?></span></td>
-                        <td>
+                    <tr data-loan-row data-loan-id="<?= (int) $loan['id'] ?>" data-status="<?= h($loan['status']) ?>">
+                        <td><code class="loan-id">#<?= (int) $loan['id'] ?></code></td>
+                        <td><span class="book-title-cell"><?= h($loan['book_title']) ?></span></td>
+                        <td><?= h($loan['member_name']) ?></td>
+                        <td><span class="date-cell"><?= h($loan['issued_at']) ?></span></td>
+                        <td><span class="date-cell" data-loan-due><?= h($loan['due_at']) ?></span></td>
+                        <td><span class="status-pill status-<?= h($loan['status']) ?>" data-loan-status><?= h(ucfirst($loan['status'])) ?></span></td>
+                        <td data-loan-days>
                             <?php if ($loan['status'] === 'returned'): ?>
-                                <span class="days-neutral">—</span>
+                                <span class="days-neutral">-</span>
                             <?php elseif ($daysLeft >= 0): ?>
                                 <span class="days-ok"><?= $daysLeft ?>d left</span>
                             <?php else: ?>
@@ -85,9 +141,9 @@ require_once __DIR__ . '/../includes/navbar.php';
                         <td>
                             <div class="action-btns">
                                 <?php if ($loan['status'] !== 'returned'): ?>
-                                    <button class="act-btn act-return" type="button" data-toast-message="&quot;<?= htmlspecialchars($loan['book']) ?>&quot; marked as returned.">Return</button>
+                                    <button class="act-btn act-return" type="button" data-loan-return data-loan-action-endpoint="<?= BASE_URL ?>/ajax/loans.php" data-loan-id="<?= (int) $loan['id'] ?>">Return</button>
                                     <?php if ($loan['status'] === 'active'): ?>
-                                        <button class="act-btn act-edit" type="button" data-toast-message="Loan <?= htmlspecialchars($loan['id']) ?> renewed for 14 more days.">Renew</button>
+                                        <button class="act-btn act-edit" type="button" data-loan-renew data-loan-action-endpoint="<?= BASE_URL ?>/ajax/loans.php" data-loan-id="<?= (int) $loan['id'] ?>">Renew</button>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span class="returned-label">Completed</span>
@@ -113,20 +169,37 @@ require_once __DIR__ . '/../includes/navbar.php';
             </button>
         </div>
         <div class="modal-body">
-            <form data-static-form data-success-message="Loan created successfully." data-close-modal="newLoanModal">
+            <form method="post" class="new-loan-form">
+                <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>" />
                 <div class="form-row">
                     <div class="form-field">
                         <label>Member Name</label>
-                        <input type="text" placeholder="e.g. Arta Berisha" required />
+                        <select name="user_id" required>
+                            <option value="">Select student</option>
+                            <?php foreach ($members as $member): ?>
+                                <option value="<?= (int) $member['id'] ?>"><?= h($member['name']) ?> (<?= h($member['email']) ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <div class="form-field">
                         <label>Book Title</label>
-                        <input type="text" placeholder="e.g. Clean Code" required />
+                        <select name="book_id" required>
+                            <option value="">Select book</option>
+                            <?php foreach ($books as $book): ?>
+                                <option value="<?= (int) $book['id'] ?>"><?= h($book['title']) ?> (<?= (int) $book['copies_available'] ?> available)</option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                 </div>
-                <div class="form-field" style="max-width: calc(50% - 0.4375rem);">
-                    <label>Loan Duration (days)</label>
-                    <input type="number" value="14" min="1" max="60" />
+                <div class="form-row">
+                    <div class="form-field">
+                        <label>Loan Duration (days)</label>
+                        <input type="number" name="duration_days" value="14" min="1" max="60" />
+                    </div>
+                    <div class="form-field">
+                        <label>Notes</label>
+                        <input type="text" name="notes" placeholder="Optional remarks for this loan" />
+                    </div>
                 </div>
                 <div class="modal-footer" style="padding-top: 1.25rem;">
                     <button class="btn-secondary" type="button" data-modal-close="newLoanModal">Cancel</button>
