@@ -40,3 +40,55 @@ try {
         ]);
         exit;
     }
+    if ($action === 'list_mine') {
+        if ($isAdmin) {
+            throw new RuntimeException('Only students can view personal requests here.');
+        }
+
+        echo json_encode([
+            'success' => true,
+            'requests' => $repository->byUser((int) ($currentUser['id'] ?? 0)),
+        ]);
+        exit;
+    }
+
+    if (!$isAdmin) {
+        throw new RuntimeException('Only administrators can review requests.');
+    }
+
+    $requestId = (int) ($_POST['request_id'] ?? 0);
+    if ($requestId < 1) {
+        throw new RuntimeException('Request ID is required.');
+    }
+
+    if ($action === 'approve') {
+        $result = $repository->approve($requestId, (int) ($currentUser['id'] ?? 0));
+        echo json_encode([
+            'success' => true,
+            'message' => 'Request approved and loan created.',
+            'request_id' => $requestId,
+            'status' => 'approved',
+            'due_at' => $result['due_at'],
+        ]);
+        exit;
+    }
+
+    if ($action === 'reject') {
+        $repository->reject($requestId, (int) ($currentUser['id'] ?? 0), trim($_POST['note'] ?? ''));
+        echo json_encode([
+            'success' => true,
+            'message' => 'Request rejected.',
+            'request_id' => $requestId,
+            'status' => 'rejected',
+        ]);
+        exit;
+    }
+
+    throw new RuntimeException('Unsupported request action.');
+} catch (Throwable $exception) {
+    http_response_code(400);
+    echo json_encode([
+        'success' => false,
+        'message' => $exception->getMessage(),
+    ]);
+}
