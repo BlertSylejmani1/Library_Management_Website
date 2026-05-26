@@ -1,10 +1,12 @@
 <?php
+
 require_once __DIR__ . '/config/config.php';
+require_once __DIR__ . '/classes/Database.php';
 require_once __DIR__ . '/classes/User.php';
+require_once __DIR__ . '/classes/UserRepository.php';
 
 if (isLoggedIn()) {
-    header('Location: ' . BASE_URL . '/pages/dashboard.php');
-    exit;
+    redirect('pages/dashboard.php');
 }
 
 $pageTitle = 'Sign In';
@@ -12,8 +14,18 @@ $useAppShell = false;
 $bodyClass = 'login-body';
 $error = '';
 $emailValue = '';
+$infoFlash = pullFlash('auth');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+try {
+    $userRepository = new UserRepository(Database::connection());
+} catch (Throwable $exception) {
+    $userRepository = null;
+    $error = 'Database connection failed. Please import the SQL file and update your database settings.';
+}
+
+if ($userRepository && isPost()) {
+    verify_csrf_or_fail();
+
     $email = trim($_POST['email'] ?? '');
     $password = trim($_POST['password'] ?? '');
 
@@ -24,15 +36,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter a valid email address.';
         $emailValue = $email;
     } else {
-        $user = User::authenticate($email, $password);
-        if ($user) {
-            $_SESSION['user'] = $user->toArray();
-            header('Location: ' . BASE_URL . '/pages/dashboard.php');
-            exit;
-        }
+        try {
+            $user = $userRepository->authenticate($email, $password);
+            if ($user) {
+                $_SESSION['user'] = [
+                    'id' => (int) $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'role' => $user['role'],
+                    'phone' => $user['phone'],
+                ];
 
-        $error = 'Invalid credentials.';
-        $emailValue = $email;
+                redirect('pages/dashboard.php');
+            }
+
+            $error = 'Invalid credentials.';
+            $emailValue = $email;
+        } catch (Throwable $exception) {
+            $error = 'Unable to sign in right now. Please try again.';
+        }
     }
 }
 
@@ -62,24 +84,23 @@ require_once __DIR__ . '/includes/header.php';
                     </defs>
                 </svg>
             </div>
-            <h1 class="login-brand-name"><?= APP_NAME ?></h1>
-            <!-- <p class="login-brand-sub">Library Management System</p> -->
+            <h1 class="login-brand-name"><?= h(APP_NAME) ?></h1>
             <div class="login-feature-list">
                 <?php foreach ([
-                    ['icon' => '📚', 'label' => 'CS & Software Eng. Books'],
-                    ['icon' => '👥', 'label' => 'Multi-role Access Control'],
-                    ['icon' => '📊', 'label' => 'Real-time Loan Analytics'],
-                    ['icon' => '🔍', 'label' => 'Advanced Search & Filter'],
+                    ['icon' => 'Books', 'label' => 'MySQL-backed catalogue and loans'],
+                    ['icon' => 'Users', 'label' => 'Role-aware admin and student access'],
+                    ['icon' => 'AJAX', 'label' => 'AJAX actions without full refresh'],
+                    ['icon' => 'API', 'label' => 'Open Library lookup integration'],
                 ] as $index => $feature): ?>
                     <div class="login-feature-item" style="animation-delay: <?= number_format($index * 0.1, 1) ?>s">
-                        <span class="feature-icon"><?= $feature['icon'] ?></span>
-                        <span><?= htmlspecialchars($feature['label']) ?></span>
+                        <span class="feature-icon"><?= h($feature['icon']) ?></span>
+                        <span><?= h($feature['label']) ?></span>
                     </div>
                 <?php endforeach; ?>
             </div>
             <div class="login-testimonial">
-                <p>"A reader lives a thousand lives before he dies ... The man who never reads lives only one"</p>
-                <span>- George R.R Martin -</span>
+                <p>"A reader lives a thousand lives before he dies. The man who never reads lives only one."</p>
+                <span>- George R. R. Martin</span>
             </div>
         </div>
     </div>
@@ -91,23 +112,23 @@ require_once __DIR__ . '/includes/header.php';
                 <p>Sign in to your account - University of Prishtina</p>
             </div>
 
+            <?php if ($infoFlash): ?>
+                <div class="login-alert-info"><?= h($infoFlash['message']) ?></div>
+            <?php endif; ?>
+
             <?php if ($error !== ''): ?>
-                <div class="login-alert-error">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                    </svg>
-                    <?= htmlspecialchars($error) ?>
-                </div>
+                <div class="login-alert-error"><?= h($error) ?></div>
             <?php endif; ?>
 
             <form method="post" action="<?= BASE_URL ?>/login.php" novalidate>
+                <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>" />
                 <div class="login-field">
                     <label for="email">Email Address</label>
                     <div class="login-input-wrap">
                         <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" />
                         </svg>
-                        <input id="email" type="email" name="email" value="<?= htmlspecialchars($emailValue) ?>" placeholder="admin@library.com" autocomplete="email" />
+                        <input id="email" type="email" name="email" value="<?= h($emailValue) ?>" placeholder="admin@library.com" autocomplete="email" />
                     </div>
                 </div>
 
@@ -152,10 +173,10 @@ require_once __DIR__ . '/includes/header.php';
 
             <div class="login-demo-hint">
                 <div style="margin-bottom: 0.4rem;">
-                    <span>🔑 Admin:</span> <code>admin@library.com</code> / <code>admin123</code>
+                    <span>Admin:</span> <code>admin@library.com</code> / <code>admin123</code>
                 </div>
                 <div>
-                    <span>🎓 Student:</span> <code>student@library.com</code> / <code>student123</code>
+                    <span>Student:</span> <code>student@library.com</code> / <code>student123</code>
                 </div>
             </div>
         </div>
@@ -173,8 +194,9 @@ require_once __DIR__ . '/includes/header.php';
             </button>
         </div>
         <div class="modal-body">
-            <form data-forgot-form>
-                <p class="modal-copy">Enter your email and we'll send a reset link.</p>
+            <form data-forgot-form data-forgot-endpoint="<?= BASE_URL ?>/ajax/forgot_password.php">
+                <input type="hidden" name="csrf_token" value="<?= h(csrf_token()) ?>" />
+                <p class="modal-copy">Enter your email and the system will send or log a reset message.</p>
                 <div class="login-alert-error modal-hidden" data-forgot-error></div>
                 <div class="form-field">
                     <label>Email Address</label>
@@ -186,9 +208,9 @@ require_once __DIR__ . '/includes/header.php';
                 </div>
             </form>
             <div class="forgot-success modal-hidden" data-forgot-success>
-                <div class="forgot-success-icon">📧</div>
-                <h3>Check your inbox</h3>
-                <p>If the address is registered, a reset link has been sent.</p>
+                <div class="forgot-success-icon">Mail</div>
+                <h3>Request processed</h3>
+                <p>The reset request has been sent or written to the local mail log.</p>
                 <div class="modal-footer" style="padding-top: 1rem;">
                     <button class="btn-primary" type="button" data-modal-close="forgotPasswordModal">Done</button>
                 </div>
