@@ -35,3 +35,14 @@ Faza II – Integrimi me databazë dhe funksionalitete të avancuara
 3. Hapeni në browser http://localhost/Library_Management_Website/login.php
 
 4. Çasjen në sistem mund të e bëni si Admin me kredencialet: admin@library.com psw:admin123 si dhe si Student me kredencialet : student@library.com psw:student123
+
+# Faza e dyte e projektit
+Projekti Library Management System në Fazën II është zgjeruar me databazë MySQL, CRUD real, siguri bazë, AJAX dhe Web API. Sistemi mundëson menaxhimin e librave, përdoruesve, huazimeve dhe kërkesave për libra.
+
+Janë përdorur PHP, MySQL, PDO, HTML, CSS, JavaScript dhe AJAX. Databaza gjendet në database/library_management.sql dhe përmban tabelat users, books, loans dhe book_requests.
+
+Projekti përdor prepared statements për mbrojtje nga SQL Injection, htmlspecialchars() për XSS, validim server-side, CSRF token dhe password_hash() / password_verify() për fjalëkalime.
+
+AJAX përdoret për fshirjen e librave, kthimin/rinovimin e huazimeve dhe kërkesat për libra. Gjithashtu është integruar Open Library API për kërkim librash sipas titullit ose ISBN-së.
+
+Për ekzekutim: importo database/library_management.sql, starto Apache/MySQL në XAMPP dhe hape projektin në browser. Llogaritë testuese janë admin@library.com / admin123 dhe student@library.com / student123.
