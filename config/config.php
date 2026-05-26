@@ -13,7 +13,7 @@ define('COOKIE_THEME', 'ath_theme');
 define('COOKIE_EXPIRE', time() + 60 * 60 * 24 * 30);
 
 define('DB_HOST', getenv('LIBRARY_DB_HOST') ?: '127.0.0.1');
-define('DB_PORT', getenv('LIBRARY_DB_PORT') ?: '3307');
+define('DB_PORT', getenv('LIBRARY_DB_PORT') ?: '3306');
 define('DB_NAME', getenv('LIBRARY_DB_NAME') ?: 'library_management');
 define('DB_USER', getenv('LIBRARY_DB_USER') ?: 'root');
 define('DB_PASS', getenv('LIBRARY_DB_PASS') ?: '');
