@@ -43,9 +43,9 @@ $notifications = ($currentUser['role'] ?? ROLE_STUDENT) === ROLE_STUDENT
         ['icon' => 'mail', 'message' => 'Deep Learning is now available to request', 'time' => 'Yesterday'],
     ]
     : [
-        ['icon' => 'warning', 'message' => 'The Great Gatsby is 3 days overdue', 'time' => '2h ago'],
-        ['icon' => 'success', 'message' => 'Dune returned by Marcus L.', 'time' => '4h ago'],
-        ['icon' => 'mail', 'message' => 'New loan request from Sarah K.', 'time' => 'Yesterday'],
+        ['icon' => 'warning', 'message' => 'Introduction to Algorithms is currently overdue', 'time' => '2h ago'],
+        ['icon' => 'success', 'message' => 'Refactoring was returned successfully', 'time' => '4h ago'],
+        ['icon' => 'mail', 'message' => 'New loan activity was created for Distributed Systems', 'time' => 'Yesterday'],
     ];
 
 function renderSidebarIcon(string $name): string
